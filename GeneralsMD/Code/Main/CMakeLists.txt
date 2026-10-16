@@ -38,6 +38,9 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.h
 
 if(MSVC)
     target_link_options(z_generals PRIVATE "/NODEFAULTLIB:libci.lib")
+    # Private build: let the 32-bit game use up to 4 GB of memory on 64-bit Windows
+    # instead of 2 GB, to avoid out-of-memory crashes in long matches.
+    target_link_options(z_generals PRIVATE "/LARGEADDRESSAWARE")
 endif()
 
 target_include_directories(z_generals PRIVATE

@@ -35,6 +35,16 @@
 #include "GameNetwork/GameSpy/PingThread.h"
 #include "GameNetwork/GameSpy/GSConfig.h"
 
+// Private build: wait much longer before dropping a player whose connection stalls,
+// so a short internet hiccup does not end the match. The retail value is 60 seconds.
+static const time_t PRIVATE_MIN_PLAYER_TIMEOUT_MS = 5 * 60 * 1000;
+
+static time_t getPlayerTimeoutTime()
+{
+	time_t configured = (time_t)TheGlobalData->m_networkPlayerTimeoutTime;
+	return (configured > PRIVATE_MIN_PLAYER_TIMEOUT_MS) ? configured : PRIVATE_MIN_PLAYER_TIMEOUT_MS;
+}
+
 
 DisconnectManager::DisconnectManager()
 {
@@ -203,13 +213,13 @@ void DisconnectManager::updateDisconnectStatus(ConnectionManager *conMgr) {
 			Int slot = translatedSlotPosition(i, conMgr->getLocalPlayerID());
 			if (slot != -1) {
 				time_t curTime = timeGetTime();
-				time_t newTime = TheGlobalData->m_networkPlayerTimeoutTime - (curTime - m_playerTimeouts[slot]);
+				time_t newTime = getPlayerTimeoutTime() - (curTime - m_playerTimeouts[slot]);
 
 // if someone is more than 2/3 timed out, lets get our frame numbers sync'd up.  Also if someone is voted out
 // lets do the same thing.
 
 				if (m_haveNotifiedOtherPlayersOfCurrentFrame == FALSE) {
-					if ((newTime < TheGlobalData->m_networkPlayerTimeoutTime / 3) || (isPlayerVotedOut(slot, conMgr) == TRUE)) {
+					if ((newTime < getPlayerTimeoutTime() / 3) || (isPlayerVotedOut(slot, conMgr) == TRUE)) {
 						TheNetwork->notifyOthersOfCurrentFrame();
 						m_haveNotifiedOtherPlayersOfCurrentFrame = TRUE;
 					}
@@ -251,7 +261,7 @@ void DisconnectManager::updateDisconnectStatus(ConnectionManager *conMgr) {
 void DisconnectManager::updateWaitForPacketRouter(ConnectionManager *conMgr) {
 /*
 	time_t curTime = timeGetTime();
-	time_t newTime = TheGlobalData->m_networkPlayerTimeoutTime - (curTime - m_packetRouterTimeout);
+	time_t newTime = getPlayerTimeoutTime() - (curTime - m_packetRouterTimeout);
 	if (newTime < 0) {
 		newTime = 0;
 
@@ -712,7 +722,7 @@ Bool DisconnectManager::hasPlayerTimedOut(Int slot) {
 		return FALSE;
 	}
 
-	time_t newTime = TheGlobalData->m_networkPlayerTimeoutTime - (timeGetTime() - m_playerTimeouts[slot]);
+	time_t newTime = getPlayerTimeoutTime() - (timeGetTime() - m_playerTimeouts[slot]);
 	if (newTime <= 0) {
 		return TRUE;
 	}
